@@ -278,3 +278,7 @@ docker build -t metube .
 
 * The above works on Windows and macOS as well as Linux.
 * If you're running the server in VSCode, your downloads will go to your user's Downloads folder (this is configured via the environment in .vscode/launch.json).
+
+
+## update log
+20241205 : modify the listing and deleting for single user, save list in localstorage
