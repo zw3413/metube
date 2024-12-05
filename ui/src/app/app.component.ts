@@ -272,12 +272,10 @@ export class AppComponent implements AfterViewInit {
     if (download.folder) {
       baseDir += download.folder + '/';
     }
-
-    let downloadUrl = baseDir + encodeURIComponent(download.filename);
-
-    let qrcodeUrl = "https://qrcode.bakers.top";
- 
-
+    let metube_host = "https://metube.bakers.top/"
+    let downloadUrl = metube_host + baseDir + encodeURIComponent(download.filename);
+    //let qrcodeUrl = "https://qrcode.bakers.top";
+    let qrcodeUrl = "http://localhost:5174";
     return qrcodeUrl+"?url="+downloadUrl;
   }
 
