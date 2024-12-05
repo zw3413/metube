@@ -1,6 +1,6 @@
 import { Component, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { faTrashAlt, faCheckCircle, faTimesCircle, IconDefinition } from '@fortawesome/free-regular-svg-icons';
-import { faRedoAlt, faSun, faMoon, faCircleHalfStroke, faCheck, faExternalLinkAlt, faDownload } from '@fortawesome/free-solid-svg-icons';
+import { faRedoAlt, faSun, faMoon, faCircleHalfStroke, faCheck, faExternalLinkAlt, faDownload, faQrcode } from '@fortawesome/free-solid-svg-icons';
 import { CookieService } from 'ngx-cookie-service';
 import { map, Observable, of } from 'rxjs';
 
@@ -49,6 +49,7 @@ export class AppComponent implements AfterViewInit {
   faCircleHalfStroke = faCircleHalfStroke;
   faDownload = faDownload;
   faExternalLinkAlt = faExternalLinkAlt;
+  faQrcode = faQrcode;
 
   constructor(public downloads: DownloadsService, private cookieService: CookieService) {
     this.format = cookieService.get('metube_format') || 'any';
@@ -259,6 +260,25 @@ export class AppComponent implements AfterViewInit {
     }
 
     return baseDir + encodeURIComponent(download.filename);
+  }
+
+  buildQrcodeLink(download: Download) {
+
+    let baseDir = this.downloads.configuration["PUBLIC_HOST_URL"];
+    if (download.quality == 'audio' || download.filename.endsWith('.mp3')) {
+      baseDir = this.downloads.configuration["PUBLIC_HOST_AUDIO_URL"];
+    }
+
+    if (download.folder) {
+      baseDir += download.folder + '/';
+    }
+
+    let downloadUrl = baseDir + encodeURIComponent(download.filename);
+
+    let qrcodeUrl = "https://qrcode.bakers.top";
+ 
+
+    return qrcodeUrl+"?url="+downloadUrl;
   }
 
   identifyDownloadRow(index: number, row: KeyValue<string, Download>) {

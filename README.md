@@ -12,7 +12,7 @@ Web GUI for youtube-dl (using the [yt-dlp](https://github.com/yt-dlp/yt-dlp) for
 ## Run using Docker
 
 ```bash
-docker run -d -p 8081:8081 -v /path/to/downloads:/downloads ghcr.io/alexta69/metube
+docker run -d -p 8081:8081 -v /path/to/downloads:/downloads ghcr.io/zw3413/metube
 ```
 
 ## Run using docker-compose
@@ -20,7 +20,7 @@ docker run -d -p 8081:8081 -v /path/to/downloads:/downloads ghcr.io/alexta69/met
 ```yaml
 services:
   metube:
-    image: ghcr.io/alexta69/metube
+    image: ghcr.io/zw3413/metube
     container_name: metube
     restart: unless-stopped
     ports:
@@ -157,7 +157,7 @@ It's possible to configure MeTube to listen in HTTPS mode. `docker-compose` exam
 ```yaml
 services:
   metube:
-    image: ghcr.io/alexta69/metube
+    image: ghcr.io/zw3413/metube
     container_name: metube
     restart: unless-stopped
     ports:
