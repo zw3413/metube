@@ -274,8 +274,8 @@ export class AppComponent implements AfterViewInit {
     }
     let metube_host = "https://metube.bakers.top/"
     let downloadUrl = metube_host + baseDir + encodeURIComponent(download.filename);
-    //let qrcodeUrl = "https://qrcode.bakers.top";
-    let qrcodeUrl = "http://localhost:5174";
+    let qrcodeUrl = "https://qrcode.bakers.top";
+    //let qrcodeUrl = "http://localhost:5174";
     return qrcodeUrl+"?url="+downloadUrl;
   }
 
