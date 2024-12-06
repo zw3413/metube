@@ -78,17 +78,19 @@ export class AppComponent implements AfterViewInit {
       this.queueMasterCheckbox.selectionChanged();
     });
     this.downloads.doneChanged.subscribe(() => {
-      this.doneMasterCheckbox.selectionChanged();
-      let completed: number = 0, failed: number = 0;
-      this.downloads.done.forEach(dl => {
-        if (dl.status === 'finished')
-          completed++;
-        else if (dl.status === 'error')
-          failed++;
-      });
-      this.doneClearCompleted.nativeElement.disabled = completed === 0;
-      this.doneClearFailed.nativeElement.disabled = failed === 0;
-      this.doneRetryFailed.nativeElement.disabled = failed === 0;
+      if(this.downloads.done && this.downloads.done.size > 0){
+        this.doneMasterCheckbox.selectionChanged();
+        let completed: number = 0, failed: number = 0;
+        this.downloads.done.forEach(dl => {
+          if (dl.status === 'finished')
+            completed++;
+          else if (dl.status === 'error')
+            failed++;
+        });
+        this.doneClearCompleted.nativeElement.disabled = completed === 0;
+        this.doneClearFailed.nativeElement.disabled = failed === 0;
+        this.doneRetryFailed.nativeElement.disabled = failed === 0;
+      }
     });
   }
 
@@ -210,6 +212,10 @@ export class AppComponent implements AfterViewInit {
       if (status.status === 'error') {
         alert(`Error adding URL: ${status.msg}`);
       } else {
+        //save url into localstorage, use a array to save multiple urls
+        let urls = localStorage.getItem('urls') ? JSON.parse(localStorage.getItem('urls')) : [];
+        urls.push(url);
+        localStorage.setItem('urls', JSON.stringify(urls));
         this.addUrl = '';
       }
       this.addInProgress = false;
@@ -242,11 +248,12 @@ export class AppComponent implements AfterViewInit {
   }
 
   retryFailedDownloads() {
+    if(this.downloads.done && this.downloads.done.size > 0){
     this.downloads.done.forEach((dl, key) => {
       if (dl.status === 'error') {
         this.retryDownload(key, dl);
       }
-    });
+    });}
   }
 
   buildDownloadLink(download: Download) {

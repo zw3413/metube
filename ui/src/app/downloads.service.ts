@@ -72,17 +72,19 @@ export class DownloadsService {
       this.queue.delete(data.url);
       this.done.set(data.url, data);
       this.queueChanged.next(null);
-      this.doneChanged.next(null);
+      this.doneChanged?.next(null);
     });
     socket.fromEvent('canceled').subscribe((strdata: string) => {
       let data: string = JSON.parse(strdata);
       this.queue.delete(data);
-      this.queueChanged.next(null);
+      this.queueChanged?.next(null);
     });
     socket.fromEvent('cleared').subscribe((strdata: string) => {
       let data: string = JSON.parse(strdata);
       this.done.delete(data);
-      this.doneChanged.next(null);
+      if(this.doneChanged){
+        this.doneChanged.next(null);
+      }
     });
     socket.fromEvent('configuration').subscribe((strdata: string) => {
       let data = JSON.parse(strdata);
