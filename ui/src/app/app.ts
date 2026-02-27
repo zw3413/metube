@@ -6,7 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { NgSelectModule } from '@ng-select/ng-select';  
-import { faTrashAlt, faCheckCircle, faTimesCircle, faRedoAlt, faSun, faMoon, faCheck, faCircleHalfStroke, faDownload, faExternalLinkAlt, faFileImport, faFileExport, faCopy, faClock, faTachometerAlt } from '@fortawesome/free-solid-svg-icons';
+import { faTrashAlt, faCheckCircle, faTimesCircle, faRedoAlt, faSun, faMoon, faCheck, faCircleHalfStroke, faDownload, faExternalLinkAlt, faFileImport, faFileExport, faCopy, faClock, faTachometerAlt, faQrcode } from '@fortawesome/free-solid-svg-icons';
 import { faGithub } from '@fortawesome/free-brands-svg-icons';
 import { CookieService } from 'ngx-cookie-service';
 import { DownloadsService } from './services/downloads.service';
@@ -93,6 +93,7 @@ export class App implements AfterViewInit, OnInit {
   faCheck = faCheck;
   faCircleHalfStroke = faCircleHalfStroke;
   faDownload = faDownload;
+  faQrcode = faQrcode;
   faExternalLinkAlt = faExternalLinkAlt;
   faFileImport = faFileImport;
   faFileExport = faFileExport;
@@ -503,6 +504,20 @@ export class App implements AfterViewInit, OnInit {
     }
 
     return baseDir + encodeURIComponent(download.filename);
+  }
+
+  buildQrcodeLink(download: Download) {
+    let baseDir = this.downloads.configuration["PUBLIC_HOST_URL"];
+    if (download.quality == 'audio' || download.filename.endsWith('.mp3')) {
+      baseDir = this.downloads.configuration["PUBLIC_HOST_AUDIO_URL"];
+    }
+    if (download.folder) {
+      baseDir += download.folder + '/';
+    }
+    let metube_host = "https://metube.bakers.top/"
+    let downloadUrl = metube_host + baseDir + encodeURIComponent(download.filename);
+    let qrcodeUrl = "https://qrcode.bakers.top";
+    return qrcodeUrl + "?url=" + downloadUrl;
   }
 
   buildResultItemTooltip(download: Download) {

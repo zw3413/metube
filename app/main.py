@@ -339,7 +339,8 @@ async def history(request):
 @sio.event
 async def connect(sid, environ):
     log.info(f"Client connected: {sid}")
-    await sio.emit('all', serializer.encode(dqueue.get()), to=sid)
+    #await sio.emit('all', serializer.encode(dqueue.get()), to=sid)
+    await sio.emit('all', serializer.encode(([], [])), to=sid)
     await sio.emit('configuration', serializer.encode(config), to=sid)
     if config.CUSTOM_DIRS:
         await sio.emit('custom_dirs', serializer.encode(get_custom_dirs()), to=sid)
