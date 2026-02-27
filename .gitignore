@@ -7,6 +7,7 @@
 
 # dependencies
 /ui/node_modules
+/ui/package-lock.json
 
 # profiling files
 chrome-profiler-events*.json
@@ -44,6 +45,10 @@ testem.log
 .DS_Store
 Thumbs.db
 
+# MeTube runtime databases
+queue*
+completed*
+pending*
 
 __pycache__
 .venv
