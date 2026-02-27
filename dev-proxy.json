@@ -1,0 +1,27 @@
+{
+  "/socket.io": {
+    "target": "http://localhost:8081",
+    "ws": true
+  },
+  "/add": {
+    "target": "http://localhost:8081"
+  },
+  "/delete": {
+    "target": "http://localhost:8081"
+  },
+  "/clear": {
+    "target": "http://localhost:8081"
+  },
+  "/history": {
+    "target": "http://localhost:8081"
+  },
+  "/configuration": {
+    "target": "http://localhost:8081"
+  },
+  "/custom-dirs": {
+    "target": "http://localhost:8081"
+  },
+  "/downloads": {
+    "target": "http://localhost:8081"
+  }
+}
