@@ -165,6 +165,42 @@ USER_ID_RE = re.compile(r'^[a-f0-9\-]{36}$')  # UUID v4 format
 sid_to_user: dict[str, str] = {}   # socket sid -> user_id
 user_queues: dict[str, DownloadQueue] = {}  # user_id -> DownloadQueue
 
+# Global download cache: (url, quality, format) -> DownloadInfo dict
+# Persisted to STATE_DIR/global_cache.json
+_global_cache: dict[str, dict] = {}
+
+def _cache_path() -> str:
+    return os.path.join(config.STATE_DIR, 'global_cache.json')
+
+def _load_global_cache():
+    global _global_cache
+    path = _cache_path()
+    if os.path.exists(path):
+        try:
+            with open(path, 'r') as f:
+                _global_cache = json.load(f)
+            log.info(f"Loaded global cache: {len(_global_cache)} entries")
+        except Exception as e:
+            log.warning(f"Failed to load global cache: {e}")
+            _global_cache = {}
+
+def _save_global_cache():
+    try:
+        with open(_cache_path(), 'w') as f:
+            json.dump(_global_cache, f)
+    except Exception as e:
+        log.warning(f"Failed to save global cache: {e}")
+
+def _cache_key(url: str, quality: str, format: str) -> str:
+    return f"{url}|{quality}|{format}"
+
+def _cache_get(url: str, quality: str, format: str) -> dict | None:
+    return _global_cache.get(_cache_key(url, quality, format))
+
+def _cache_put(url: str, quality: str, format: str, info: dict):
+    _global_cache[_cache_key(url, quality, format)] = info
+    _save_global_cache()
+
 class UserConfig:
     """A copy of Config with a per-user STATE_DIR."""
     def __init__(self, base_config, state_dir):
@@ -191,6 +227,10 @@ class UserNotifier(DownloadQueueNotifier):
 
     async def completed(self, dl):
         log.info(f"[{self.user_id[:8]}] Download completed - {dl.title}")
+        # Write to global cache so other users can reuse this file
+        if getattr(dl, 'status', None) == 'finished' and getattr(dl, 'filename', None):
+            _cache_put(dl.url, dl.quality, dl.format, dl.__dict__.copy())
+            log.info(f"Cached: {_cache_key(dl.url, dl.quality, dl.format)}")
         for sid in self._sids():
             await sio.emit('completed', serializer.encode(dl), to=sid)
 
@@ -206,6 +246,8 @@ class UserNotifier(DownloadQueueNotifier):
 
 async def get_or_create_queue(user_id: str) -> DownloadQueue:
     """Return existing DownloadQueue for user, or create a new one."""
+    if not _global_cache:
+        _load_global_cache()
     if user_id not in user_queues:
         state_dir = os.path.join(config.STATE_DIR, 'users', user_id)
         os.makedirs(state_dir, exist_ok=True)
@@ -337,6 +379,38 @@ async def add(request):
     if not user_id:
         raise web.HTTPBadRequest(reason='Missing or invalid X-User-ID header')
     dqueue = await get_or_create_queue(user_id)
+
+    # Check global cache: if already downloaded with same url+quality+format, reuse
+    cached = _cache_get(url, quality, format or '')
+    if cached and cached.get('filename') and cached.get('status') == 'finished':
+        log.info(f"Cache hit for {url} ({quality}/{format}) — reusing for user {user_id[:8]}")
+        import time as _time
+        from ytdl import DownloadInfo
+        info = DownloadInfo(
+            id=cached.get('id', url),
+            title=cached.get('title', url),
+            url=url,
+            quality=quality,
+            format=format or '',
+            folder=folder or '',
+            custom_name_prefix=custom_name_prefix or '',
+            error=None,
+            entry=None,
+            playlist_item_limit=int(playlist_item_limit),
+            split_by_chapters=split_by_chapters,
+            chapter_template=chapter_template or '',
+        )
+        info.status = 'finished'
+        info.filename = cached.get('filename')
+        info.size = cached.get('size')
+        info.timestamp = _time.time_ns()
+        # Use a lightweight wrapper that PersistentQueue can store
+        class _CachedEntry:
+            def __init__(self, i): self.info = i; self.canceled = False
+        dqueue.done.put(_CachedEntry(info))
+        for sid in [s for s, u in sid_to_user.items() if u == user_id]:
+            await sio.emit('completed', serializer.encode(info), to=sid)
+        return web.Response(text=serializer.encode({'status': 'ok'}))
 
     status = await dqueue.add(
         url,
