@@ -1,8 +1,8 @@
 import { inject, Injectable } from '@angular/core';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { of, Subject } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { MeTubeSocket } from './metube-socket.service';
+import { MeTubeSocket, USER_ID } from './metube-socket.service';
 import { Download, Status, State } from '../interfaces';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 @Injectable({
@@ -11,6 +11,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 export class DownloadsService {
   private http = inject(HttpClient);
   private socket = inject(MeTubeSocket);
+  private userHeaders = new HttpHeaders({ 'X-User-ID': USER_ID });
   loading = true;
   queue = new Map<string, Download>();
   done = new Map<string, Download>();
@@ -134,13 +135,13 @@ export class DownloadsService {
       subtitle_format: subtitleFormat,
       subtitle_language: subtitleLanguage,
       subtitle_mode: subtitleMode
-    }).pipe(
+    }, { headers: this.userHeaders }).pipe(
       catchError(this.handleHTTPError)
     );
   }
 
   public startById(ids: string[]) {
-    return this.http.post('start', {ids: ids});
+    return this.http.post('start', {ids: ids}, { headers: this.userHeaders });
   }
 
   public delById(where: State, ids: string[]) {
@@ -153,7 +154,7 @@ export class DownloadsService {
         }
       }
     }
-    return this.http.post('delete', {where: where, ids: ids});
+    return this.http.post('delete', {where: where, ids: ids}, { headers: this.userHeaders });
   }
 
   public startByFilter(where: State, filter: (dl: Download) => boolean) {

@@ -159,30 +159,77 @@ routes = web.RouteTableDef()
 VALID_SUBTITLE_FORMATS = {'srt', 'txt', 'vtt', 'ttml', 'sbv', 'scc', 'dfxp'}
 VALID_SUBTITLE_MODES = {'auto_only', 'manual_only', 'prefer_manual', 'prefer_auto'}
 SUBTITLE_LANGUAGE_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9-]{0,34}$')
+USER_ID_RE = re.compile(r'^[a-f0-9\-]{36}$')  # UUID v4 format
 
-class Notifier(DownloadQueueNotifier):
+# Multi-user state
+sid_to_user: dict[str, str] = {}   # socket sid -> user_id
+user_queues: dict[str, DownloadQueue] = {}  # user_id -> DownloadQueue
+
+class UserConfig:
+    """A copy of Config with a per-user STATE_DIR."""
+    def __init__(self, base_config, state_dir):
+        self.__dict__.update(base_config.__dict__)
+        self.STATE_DIR = state_dir
+
+class UserNotifier(DownloadQueueNotifier):
+    """Notifier that emits socket events only to the owning user's connected sids."""
+    def __init__(self, user_id: str):
+        self.user_id = user_id
+
+    def _sids(self):
+        return [sid for sid, uid in sid_to_user.items() if uid == self.user_id]
+
     async def added(self, dl):
-        log.info(f"Notifier: Download added - {dl.title}")
-        await sio.emit('added', serializer.encode(dl))
+        log.info(f"[{self.user_id[:8]}] Download added - {dl.title}")
+        for sid in self._sids():
+            await sio.emit('added', serializer.encode(dl), to=sid)
 
     async def updated(self, dl):
-        log.debug(f"Notifier: Download updated - {dl.title}")
-        await sio.emit('updated', serializer.encode(dl))
+        log.debug(f"[{self.user_id[:8]}] Download updated - {dl.title}")
+        for sid in self._sids():
+            await sio.emit('updated', serializer.encode(dl), to=sid)
 
     async def completed(self, dl):
-        log.info(f"Notifier: Download completed - {dl.title}")
-        await sio.emit('completed', serializer.encode(dl))
+        log.info(f"[{self.user_id[:8]}] Download completed - {dl.title}")
+        for sid in self._sids():
+            await sio.emit('completed', serializer.encode(dl), to=sid)
 
     async def canceled(self, id):
-        log.info(f"Notifier: Download canceled - {id}")
-        await sio.emit('canceled', serializer.encode(id))
+        log.info(f"[{self.user_id[:8]}] Download canceled - {id}")
+        for sid in self._sids():
+            await sio.emit('canceled', serializer.encode(id), to=sid)
 
     async def cleared(self, id):
-        log.info(f"Notifier: Download cleared - {id}")
-        await sio.emit('cleared', serializer.encode(id))
+        log.info(f"[{self.user_id[:8]}] Download cleared - {id}")
+        for sid in self._sids():
+            await sio.emit('cleared', serializer.encode(id), to=sid)
 
-dqueue = DownloadQueue(config, Notifier())
-app.on_startup.append(lambda app: dqueue.initialize())
+async def get_or_create_queue(user_id: str) -> DownloadQueue:
+    """Return existing DownloadQueue for user, or create a new one."""
+    if user_id not in user_queues:
+        state_dir = os.path.join(config.STATE_DIR, 'users', user_id)
+        os.makedirs(state_dir, exist_ok=True)
+        user_config = UserConfig(config, state_dir)
+        notifier = UserNotifier(user_id)
+        q = DownloadQueue(user_config, notifier)
+        user_queues[user_id] = q
+        await q.initialize()
+        log.info(f"Created queue for user {user_id[:8]}")
+    return user_queues[user_id]
+
+def get_user_id(request_or_environ) -> str | None:
+    """Extract and validate user_id from HTTP header or socket query string."""
+    if isinstance(request_or_environ, dict):
+        # Socket.IO environ — parse query string
+        qs = request_or_environ.get('QUERY_STRING', '')
+        params = dict(p.split('=', 1) for p in qs.split('&') if '=' in p)
+        user_id = params.get('user_id', '')
+    else:
+        # aiohttp request
+        user_id = request_or_environ.headers.get('X-User-ID', '')
+    if user_id and USER_ID_RE.match(user_id):
+        return user_id
+    return None
 
 class FileOpsFilter(DefaultFilter):
     def __call__(self, change_type: int, path: str) -> bool:
@@ -286,6 +333,11 @@ async def add(request):
 
     playlist_item_limit = int(playlist_item_limit)
 
+    user_id = get_user_id(request)
+    if not user_id:
+        raise web.HTTPBadRequest(reason='Missing or invalid X-User-ID header')
+    dqueue = await get_or_create_queue(user_id)
+
     status = await dqueue.add(
         url,
         quality,
@@ -310,6 +362,10 @@ async def delete(request):
     if not ids or where not in ['queue', 'done']:
         log.error("Bad request: missing 'ids' or incorrect 'where' value")
         raise web.HTTPBadRequest()
+    user_id = get_user_id(request)
+    if not user_id:
+        raise web.HTTPBadRequest(reason='Missing or invalid X-User-ID header')
+    dqueue = await get_or_create_queue(user_id)
     status = await (dqueue.cancel(ids) if where == 'queue' else dqueue.clear(ids))
     log.info(f"Download delete request processed for ids: {ids}, where: {where}")
     return web.Response(text=serializer.encode(status))
@@ -319,13 +375,21 @@ async def start(request):
     post = await request.json()
     ids = post.get('ids')
     log.info(f"Received request to start pending downloads for ids: {ids}")
+    user_id = get_user_id(request)
+    if not user_id:
+        raise web.HTTPBadRequest(reason='Missing or invalid X-User-ID header')
+    dqueue = await get_or_create_queue(user_id)
     status = await dqueue.start_pending(ids)
     return web.Response(text=serializer.encode(status))
 
 @routes.get(config.URL_PREFIX + 'history')
 async def history(request):
-    history = { 'done': [], 'queue': [], 'pending': []}
+    user_id = get_user_id(request)
+    if not user_id:
+        raise web.HTTPBadRequest(reason='Missing or invalid X-User-ID header')
+    dqueue = await get_or_create_queue(user_id)
 
+    history = { 'done': [], 'queue': [], 'pending': []}
     for _, v in dqueue.queue.saved_items():
         history['queue'].append(v)
     for _, v in dqueue.done.saved_items():
@@ -338,14 +402,24 @@ async def history(request):
 
 @sio.event
 async def connect(sid, environ):
-    log.info(f"Client connected: {sid}")
-    #await sio.emit('all', serializer.encode(dqueue.get()), to=sid)
-    await sio.emit('all', serializer.encode(([], [])), to=sid)
+    user_id = get_user_id(environ)
+    if not user_id:
+        log.warning(f"Client {sid} connected without valid user_id — rejecting")
+        return False  # reject connection
+    sid_to_user[sid] = user_id
+    log.info(f"Client connected: {sid} (user {user_id[:8]})")
+    dqueue = await get_or_create_queue(user_id)
+    await sio.emit('all', serializer.encode(dqueue.get()), to=sid)
     await sio.emit('configuration', serializer.encode(config), to=sid)
     if config.CUSTOM_DIRS:
         await sio.emit('custom_dirs', serializer.encode(get_custom_dirs()), to=sid)
     if config.YTDL_OPTIONS_FILE:
         await sio.emit('ytdl_options_changed', serializer.encode(get_options_update_time()), to=sid)
+
+@sio.event
+async def disconnect(sid):
+    user_id = sid_to_user.pop(sid, None)
+    log.info(f"Client disconnected: {sid} (user {(user_id or 'unknown')[:8]})")
 
 def get_custom_dirs():
     def recursive_dirs(base):
@@ -438,7 +512,7 @@ app.router.add_route('OPTIONS', config.URL_PREFIX + 'add', add_cors)
 async def on_prepare(request, response):
     if 'Origin' in request.headers:
         response.headers['Access-Control-Allow-Origin'] = request.headers['Origin']
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-User-ID'
 
 app.on_response_prepare.append(on_prepare)
 

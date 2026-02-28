@@ -2,6 +2,18 @@ import { Injectable, inject } from '@angular/core';
 import { ApplicationRef } from '@angular/core';
 import { Socket } from 'ngx-socket-io';
 
+function getOrCreateUserId(): string {
+  const key = 'metube_user_id';
+  let userId = localStorage.getItem(key);
+  if (!userId) {
+    userId = crypto.randomUUID();
+    localStorage.setItem(key, userId);
+  }
+  return userId;
+}
+
+export const USER_ID = getOrCreateUserId();
+
 @Injectable(
   { providedIn: 'root' }
 )
@@ -12,6 +24,6 @@ export class MeTubeSocket extends Socket {
 
     const path =
       document.location.pathname.replace(/share-target/, '') + 'socket.io';
-    super({ url: '', options: { path } }, appRef);
+    super({ url: '', options: { path, query: { user_id: USER_ID } } }, appRef);
   }
 }
