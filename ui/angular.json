@@ -26,7 +26,8 @@
               "src/favicon.ico",
               "src/assets",
               "src/manifest.webmanifest",
-              "src/custom-service-worker.js"
+              "src/custom-service-worker.js",
+              "src/sitemap.xml"
             ],
             "styles": [
               "node_modules/bootstrap/dist/css/bootstrap.min.css",
@@ -76,16 +77,16 @@
             "production": {
               "buildTarget": "metube:build:production"
             },
-             "development": {
+            "development": {
               "buildTarget": "metube:build:development"
             }
           },
-           "defaultConfiguration": "development"
+          "defaultConfiguration": "development"
         },
         "test": {
           "builder": "@angular/build:unit-test"
         },
-       "lint": {
+        "lint": {
           "builder": "@angular-eslint/builder:lint",
           "options": {
             "lintFilePatterns": [

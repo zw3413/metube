@@ -472,9 +472,13 @@ def robots(request):
         response = web.FileResponse(os.path.join(config.BASE_DIR, config.ROBOTS_TXT))
     else:
         response = web.Response(
-            text="User-agent: *\nDisallow: /download/\nDisallow: /audio_download/\n"
+            text="User-agent: *\nDisallow: /download/\nDisallow: /audio_download/\nSitemap: https://metube.bakers.top/sitemap.xml\n"
         )
     return response
+
+@routes.get(config.URL_PREFIX + 'sitemap.xml')
+def sitemap(request):
+    return web.FileResponse(os.path.join(config.BASE_DIR, 'ui/dist/metube/browser/sitemap.xml'))
 
 @routes.get(config.URL_PREFIX + 'version')
 def version(request):
