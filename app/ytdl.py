@@ -521,7 +521,7 @@ class PersistentQueue:
                     log.debug(f"{log_prefix} failed: {result.stderr}")
                 else:
                     shutil.move(f"{self.path}.tmp", self.path)
-                    log.debug(f"{log_prefix}{result.stdout or " was successful, no output"}")
+                    log.debug(f"{log_prefix}{result.stdout or 'was successful, no output'}")
             except FileNotFoundError:
                 log.debug(f"{log_prefix} failed: 'sqlite3' was not found")
 

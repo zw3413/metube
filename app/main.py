@@ -14,7 +14,12 @@ import logging
 import json
 import pathlib
 import re
-from watchfiles import DefaultFilter, Change, awatch
+try:
+    from watchfiles import DefaultFilter, Change, awatch
+except ImportError:
+    DefaultFilter = None
+    Change = None
+    awatch = None
 
 from ytdl import DownloadQueueNotifier, DownloadQueue
 from yt_dlp.version import __version__ as yt_dlp_version
@@ -273,7 +278,7 @@ def get_user_id(request_or_environ) -> str | None:
         return user_id
     return None
 
-class FileOpsFilter(DefaultFilter):
+class FileOpsFilter(DefaultFilter or object):
     def __call__(self, change_type: int, path: str) -> bool:
         # Check if this path matches our YTDL_OPTIONS_FILE
         if path != config.YTDL_OPTIONS_FILE:
@@ -319,7 +324,7 @@ async def watch_files():
     log.info(f'Starting Watch File: {config.YTDL_OPTIONS_FILE}')
     asyncio.create_task(_watch_files())
 
-if config.YTDL_OPTIONS_FILE:
+if config.YTDL_OPTIONS_FILE and awatch is not None:
     app.on_startup.append(lambda app: watch_files())
 
 @routes.post(config.URL_PREFIX + 'add')
