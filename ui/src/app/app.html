@@ -484,6 +484,7 @@
                 @if (download.value.filename) {
                   <a target="_blank" href="{{buildQrcodeLink(download.value)}}" class="btn btn-link"><fa-icon [icon]="faQrcode" /></a>
                   <a href="{{buildDownloadLink(download.value)}}" download class="btn btn-link"><fa-icon [icon]="faDownload" /></a>
+                  <button type="button" class="btn btn-link" (click)="shareDownload(download.value)" ngbTooltip="生成短链接并复制"><fa-icon [icon]="faShareAlt" /></button>
                 }
                 <a href="{{download.value.url}}" target="_blank" class="btn btn-link"><fa-icon [icon]="faExternalLinkAlt" /></a>
                 <button type="button" class="btn btn-link" (click)="delDownload('done', download.key)"><fa-icon [icon]="faTrashAlt" /></button>

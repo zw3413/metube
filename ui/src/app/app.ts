@@ -6,7 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { NgSelectModule } from '@ng-select/ng-select';  
-import { faTrashAlt, faCheckCircle, faTimesCircle, faRedoAlt, faSun, faMoon, faCheck, faCircleHalfStroke, faDownload, faExternalLinkAlt, faFileImport, faFileExport, faCopy, faClock, faTachometerAlt, faQrcode } from '@fortawesome/free-solid-svg-icons';
+import { faTrashAlt, faCheckCircle, faTimesCircle, faRedoAlt, faSun, faMoon, faCheck, faCircleHalfStroke, faDownload, faExternalLinkAlt, faFileImport, faFileExport, faCopy, faClock, faTachometerAlt, faQrcode, faShareAlt } from '@fortawesome/free-solid-svg-icons';
 import { faGithub } from '@fortawesome/free-brands-svg-icons';
 import { CookieService } from 'ngx-cookie-service';
 import { DownloadsService } from './services/downloads.service';
@@ -94,6 +94,7 @@ export class App implements AfterViewInit, OnInit {
   faCircleHalfStroke = faCircleHalfStroke;
   faDownload = faDownload;
   faQrcode = faQrcode;
+  faShareAlt = faShareAlt;
   faExternalLinkAlt = faExternalLinkAlt;
   faFileImport = faFileImport;
   faFileExport = faFileExport;
@@ -518,6 +519,31 @@ export class App implements AfterViewInit, OnInit {
     let downloadUrl = metube_host + baseDir + encodeURIComponent(download.filename);
     let qrcodeUrl = "https://qrcode.bakers.top";
     return qrcodeUrl + "?url=" + downloadUrl;
+  }
+
+  shareDownload(download: Download) {
+    const longUrl = this.buildDownloadLink(download);
+    // Use full URL (include origin for relative paths)
+    const fullUrl = longUrl.startsWith('http') ? longUrl : `${window.location.origin}${longUrl.startsWith('/') ? '' : '/'}${longUrl}`;
+    const tinyurlApi = `https://tinyurl.com/api-create.php?url=${encodeURIComponent(fullUrl)}`;
+    this.http.get(tinyurlApi, { responseType: 'text' }).subscribe({
+      next: (shortUrl) => {
+        navigator.clipboard.writeText(shortUrl).then(() => {
+          alert(`短链接已复制:\n${shortUrl}`);
+        }).catch(() => {
+          // Fallback: show prompt for manual copy
+          prompt('复制短链接:', shortUrl);
+        });
+      },
+      error: () => {
+        // Fallback: copy long URL
+        navigator.clipboard.writeText(fullUrl).then(() => {
+          alert(`(短链接生成失败，已复制原始链接)\n${fullUrl}`);
+        }).catch(() => {
+          prompt('复制链接:', fullUrl);
+        });
+      }
+    });
   }
 
   buildResultItemTooltip(download: Download) {
