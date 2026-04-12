@@ -3,7 +3,7 @@ FROM node:lts-alpine AS builder
 WORKDIR /metube
 COPY ui ./
 RUN corepack enable && corepack prepare pnpm --activate
-RUN CI=true pnpm install && pnpm run build
+RUN CI=true pnpm install --ignore-scripts && pnpm rebuild esbuild && pnpm run build
 
 
 FROM rust:1.93-slim AS bgutil-builder
