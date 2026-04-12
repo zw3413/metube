@@ -272,6 +272,24 @@ main
     padding-bottom: 8px
     border-bottom: 1px solid var(--notion-border)
 
+.detail-section-toggle
+    display: flex
+    justify-content: space-between
+    align-items: center
+    cursor: pointer
+    user-select: none
+    &:hover
+        color: var(--bs-body-color)
+
+.toggle-icon
+    font-size: 0.75rem
+    opacity: 0.6
+
+.copy-btn
+    font-size: 0.75rem
+    padding: 2px 8px
+    line-height: 1.4
+
 .detail-player-wrapper
     background: #000
     border-radius: 8px
@@ -290,8 +308,13 @@ main
 .detail-chapter-item
     display: flex
     align-items: baseline
-    padding: 6px 0
+    padding: 8px 12px
     border-bottom: 1px solid var(--notion-border)
+    cursor: pointer
+    border-radius: 4px
+    transition: background-color 0.15s ease
+    &:hover
+        background: var(--bs-primary-bg-subtle, rgba(35, 131, 226, 0.08))
     &:last-child
         border-bottom: none
 

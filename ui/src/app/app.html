@@ -561,7 +561,7 @@
               </h5>
               <div class="detail-chapters">
                 @for (chapter of detailData.chapters; track chapter.title) {
-                  <div class="detail-chapter-item">
+                  <div class="detail-chapter-item" (click)="seekToChapter(chapter.start_time)">
                     <span class="chapter-time">{{ formatChapterTime(chapter.start_time) }}</span>
                     <span class="chapter-title">{{ chapter.title }}</span>
                   </div>
@@ -573,20 +573,35 @@
           <!-- Description / Summary -->
           @if (detailData.description) {
             <div class="detail-section">
-              <h5 class="detail-section-title">
-                <fa-icon [icon]="faStickyNote" class="me-2" />视频总结 / Show Notes
+              <h5 class="detail-section-title detail-section-toggle" (click)="detailDescriptionCollapsed = !detailDescriptionCollapsed">
+                <span>
+                  <fa-icon [icon]="faStickyNote" class="me-2" />视频总结 / Show Notes
+                </span>
+                <fa-icon [icon]="detailDescriptionCollapsed ? faChevronDown : faChevronUp" class="toggle-icon" />
               </h5>
-              <div class="detail-description">{{ detailData.description }}</div>
+              @if (!detailDescriptionCollapsed) {
+                <div class="detail-description">{{ detailData.description }}</div>
+              }
             </div>
           }
 
           <!-- Subtitle Text -->
           @if (detailData.subtitle_text) {
             <div class="detail-section">
-              <h5 class="detail-section-title">
-                <fa-icon [icon]="faFileAlt" class="me-2" />完整字幕
+              <h5 class="detail-section-title detail-section-toggle" (click)="detailSubtitleCollapsed = !detailSubtitleCollapsed">
+                <span>
+                  <fa-icon [icon]="faFileAlt" class="me-2" />完整字幕
+                </span>
+                <span class="d-flex align-items-center gap-2">
+                  <button class="btn btn-sm btn-outline-secondary copy-btn" (click)="copySubtitleText(); $event.stopPropagation()">
+                    <fa-icon [icon]="subtitleCopySuccess ? faCheck : faCopy" class="me-1" />{{ subtitleCopySuccess ? '已复制' : '复制' }}
+                  </button>
+                  <fa-icon [icon]="detailSubtitleCollapsed ? faChevronDown : faChevronUp" class="toggle-icon" />
+                </span>
               </h5>
-              <div class="detail-subtitle-text">{{ detailData.subtitle_text }}</div>
+              @if (!detailSubtitleCollapsed) {
+                <div class="detail-subtitle-text">{{ detailData.subtitle_text }}</div>
+              }
             </div>
           }
 

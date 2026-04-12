@@ -1,12 +1,12 @@
 import { AsyncPipe, KeyValuePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { AfterViewInit, Component, ElementRef, viewChild, inject, OnInit } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, viewChild, inject, OnInit, HostListener } from '@angular/core';
 import { Observable, map, distinctUntilChanged } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { NgSelectModule } from '@ng-select/ng-select';  
-import { faTrashAlt, faCheckCircle, faTimesCircle, faRedoAlt, faSun, faMoon, faCheck, faCircleHalfStroke, faDownload, faExternalLinkAlt, faFileImport, faFileExport, faCopy, faClock, faTachometerAlt, faQrcode, faShareAlt, faInfoCircle, faArrowLeft, faList, faFileAlt, faStickyNote } from '@fortawesome/free-solid-svg-icons';
+import { faTrashAlt, faCheckCircle, faTimesCircle, faRedoAlt, faSun, faMoon, faCheck, faCircleHalfStroke, faDownload, faExternalLinkAlt, faFileImport, faFileExport, faCopy, faClock, faTachometerAlt, faQrcode, faShareAlt, faInfoCircle, faArrowLeft, faList, faFileAlt, faStickyNote, faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons';
 import { faGithub } from '@fortawesome/free-brands-svg-icons';
 import { CookieService } from 'ngx-cookie-service';
 import { DownloadsService } from './services/downloads.service';
@@ -107,6 +107,8 @@ export class App implements AfterViewInit, OnInit {
   faList = faList;
   faFileAlt = faFileAlt;
   faStickyNote = faStickyNote;
+  faChevronDown = faChevronDown;
+  faChevronUp = faChevronUp;
 
   // Detail page state
   detailView = false;
@@ -120,6 +122,9 @@ export class App implements AfterViewInit, OnInit {
     chapters: Array<{ title: string; start_time: number; end_time: number }>;
     subtitle_text: string;
   } | null = null;
+  detailDescriptionCollapsed = false;
+  detailSubtitleCollapsed = true;
+  subtitleCopySuccess = false;
 
   subtitleFormats = [
     { id: 'srt', text: 'SRT' },
@@ -764,6 +769,9 @@ export class App implements AfterViewInit, OnInit {
     this.detailLoading = true;
     this.detailView = true;
     this.detailData = null;
+    this.detailDescriptionCollapsed = false;
+    this.detailSubtitleCollapsed = true;
+    this.subtitleCopySuccess = false;
     this.downloads.getDetail(download.url).subscribe({
       next: (data: any) => {
         this.detailData = data;
@@ -773,12 +781,46 @@ export class App implements AfterViewInit, OnInit {
         this.detailLoading = false;
       }
     });
+    // Scroll overlay to top
+    setTimeout(() => {
+      const overlay = document.querySelector('.detail-overlay');
+      if (overlay) overlay.scrollTop = 0;
+    });
   }
 
   closeDetail() {
+    // Pause video to prevent audio leak
+    const video = document.querySelector('.detail-video') as HTMLVideoElement;
+    if (video) {
+      video.pause();
+      video.src = '';
+    }
     this.detailView = false;
     this.detailDownload = null;
     this.detailData = null;
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscapeKey() {
+    if (this.detailView) {
+      this.closeDetail();
+    }
+  }
+
+  seekToChapter(seconds: number) {
+    const video = document.querySelector('.detail-video') as HTMLVideoElement;
+    if (video) {
+      video.currentTime = seconds;
+      video.play();
+    }
+  }
+
+  copySubtitleText() {
+    if (!this.detailData?.subtitle_text) return;
+    navigator.clipboard.writeText(this.detailData.subtitle_text).then(() => {
+      this.subtitleCopySuccess = true;
+      setTimeout(() => this.subtitleCopySuccess = false, 2000);
+    });
   }
 
   formatChapterTime(seconds: number): string {
