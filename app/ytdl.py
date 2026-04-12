@@ -164,6 +164,13 @@ class DownloadInfo:
         self.subtitle_language = subtitle_language
         self.subtitle_mode = subtitle_mode
         self.subtitle_files = []
+        # Store video metadata for detail page
+        if entry is not None:
+            self.description = entry.get('description', '')
+            self.chapters = entry.get('chapters') or []
+        else:
+            self.description = ''
+            self.chapters = []
 
 class Download:
     manager = None

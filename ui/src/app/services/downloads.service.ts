@@ -206,6 +206,13 @@ export class DownloadsService {
         });
     });
   }
+  public getDetail(url: string) {
+    return this.http.get<Record<string, unknown>>('detail', {
+      params: { url },
+      headers: this.userHeaders,
+    }).pipe(catchError(this.handleHTTPError));
+  }
+
   public exportQueueUrls(): string[] {
     return Array.from(this.queue.values()).map(download => download.url);
   }

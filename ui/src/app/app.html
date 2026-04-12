@@ -482,6 +482,7 @@
                   <button type="button" class="btn btn-link" (click)="retryDownload(download.key, download.value)"><fa-icon [icon]="faRedoAlt" /></button>
                 }
                 @if (download.value.filename) {
+                  <button type="button" class="btn btn-link" (click)="showDetail(download.value)" ngbTooltip="视频详情"><fa-icon [icon]="faInfoCircle" /></button>
                   <a target="_blank" href="{{buildQrcodeLink(download.value)}}" class="btn btn-link"><fa-icon [icon]="faQrcode" /></a>
                   <a href="{{buildDownloadLink(download.value)}}" download class="btn btn-link"><fa-icon [icon]="faDownload" /></a>
                   <button type="button" class="btn btn-link" (click)="shareDownload(download.value)" ngbTooltip="生成短链接并复制"><fa-icon [icon]="faShareAlt" /></button>
@@ -520,6 +521,85 @@
       </tbody>
     </table>
   </div>
+
+  <!-- Video Detail Overlay -->
+  @if (detailView) {
+    <div class="detail-overlay">
+      <div class="detail-header">
+        <button type="button" class="btn btn-outline-secondary" (click)="closeDetail()">
+          <fa-icon [icon]="faArrowLeft" /> 返回列表
+        </button>
+        <h4 class="detail-title ms-3 mb-0">{{ detailDownload?.title }}</h4>
+      </div>
+
+      @if (detailLoading) {
+        <div class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="mt-2">加载详情中...</p>
+        </div>
+      }
+
+      @if (detailData && !detailLoading) {
+        <div class="detail-content">
+          <!-- Video Player -->
+          <div class="detail-section">
+            <div class="detail-player-wrapper">
+              <video controls class="detail-video" preload="metadata">
+                <source [src]="buildDownloadLink(detailDownload!)" />
+                您的浏览器不支持视频播放。
+              </video>
+            </div>
+          </div>
+
+          <!-- Chapters / Outline -->
+          @if (detailData.chapters && detailData.chapters.length > 0) {
+            <div class="detail-section">
+              <h5 class="detail-section-title">
+                <fa-icon [icon]="faList" class="me-2" />视频大纲
+              </h5>
+              <div class="detail-chapters">
+                @for (chapter of detailData.chapters; track chapter.title) {
+                  <div class="detail-chapter-item">
+                    <span class="chapter-time">{{ formatChapterTime(chapter.start_time) }}</span>
+                    <span class="chapter-title">{{ chapter.title }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Description / Summary -->
+          @if (detailData.description) {
+            <div class="detail-section">
+              <h5 class="detail-section-title">
+                <fa-icon [icon]="faStickyNote" class="me-2" />视频总结 / Show Notes
+              </h5>
+              <div class="detail-description">{{ detailData.description }}</div>
+            </div>
+          }
+
+          <!-- Subtitle Text -->
+          @if (detailData.subtitle_text) {
+            <div class="detail-section">
+              <h5 class="detail-section-title">
+                <fa-icon [icon]="faFileAlt" class="me-2" />完整字幕
+              </h5>
+              <div class="detail-subtitle-text">{{ detailData.subtitle_text }}</div>
+            </div>
+          }
+
+          <!-- No content available -->
+          @if (!detailData.chapters?.length && !detailData.description && !detailData.subtitle_text) {
+            <div class="detail-section text-center text-muted py-4">
+              <p>暂无大纲、描述或字幕信息。</p>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
 </main><!-- /.container -->
 
 <footer class="footer navbar-dark bg-dark py-3 mt-5">

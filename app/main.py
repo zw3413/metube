@@ -566,6 +566,91 @@ def version(request):
         "version": os.getenv("METUBE_VERSION", "dev")
     })
 
+def _parse_subtitle_to_text(filepath: str) -> str:
+    """Read a subtitle file (.srt, .vtt, .txt) and return plain text without timestamps."""
+    if not os.path.exists(filepath):
+        return ''
+    ext = os.path.splitext(filepath)[1].lower()
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
+            content = f.read()
+    except OSError:
+        return ''
+    if ext == '.txt':
+        return content.strip()
+    # Strip SRT/VTT timestamps and cue numbers
+    content = content.replace('\r\n', '\n').replace('\r', '\n')
+    lines = []
+    for block in re.split(r'\n{2,}', content):
+        block_lines = [line.strip() for line in block.split('\n') if line.strip()]
+        if not block_lines:
+            continue
+        # Skip WEBVTT header
+        if block_lines[0].startswith('WEBVTT'):
+            continue
+        # Skip cue number line (pure digits)
+        if re.fullmatch(r'\d+', block_lines[0]):
+            block_lines = block_lines[1:]
+        # Skip timestamp line
+        if block_lines and '-->' in block_lines[0]:
+            block_lines = block_lines[1:]
+        text_parts = []
+        for line in block_lines:
+            if '-->' in line:
+                continue
+            clean = re.sub(r'<[^>]+>', '', line).strip()
+            if clean:
+                text_parts.append(clean)
+        if text_parts:
+            lines.append(' '.join(text_parts))
+    return '\n'.join(lines)
+
+
+@routes.get(config.URL_PREFIX + 'detail')
+async def detail(request):
+    url = request.query.get('url')
+    if not url:
+        raise web.HTTPBadRequest(reason='Missing url parameter')
+    user_id = get_user_id(request)
+    if not user_id:
+        raise web.HTTPBadRequest(reason='Missing or invalid X-User-ID header')
+    dqueue = await get_or_create_queue(user_id)
+    if not dqueue.done.exists(url):
+        raise web.HTTPNotFound(reason='Download not found')
+    dl = dqueue.done.get(url)
+    info = dl.info
+
+    # Parse subtitle text from first available subtitle file
+    subtitle_text = ''
+    subtitle_files = getattr(info, 'subtitle_files', [])
+    for sf in subtitle_files:
+        fpath = os.path.join(config.DOWNLOAD_DIR, sf['filename'])
+        text = _parse_subtitle_to_text(fpath)
+        if text:
+            subtitle_text = text
+            break
+    # Fallback: look for .srt/.vtt/.txt file alongside the video
+    if not subtitle_text and getattr(info, 'filename', None):
+        video_base = os.path.splitext(os.path.join(config.DOWNLOAD_DIR, info.filename))[0]
+        for ext in ('.txt', '.srt', '.vtt'):
+            candidate = video_base + ext
+            if os.path.exists(candidate):
+                subtitle_text = _parse_subtitle_to_text(candidate)
+                if subtitle_text:
+                    break
+
+    result = {
+        'title': getattr(info, 'title', ''),
+        'url': getattr(info, 'url', ''),
+        'filename': getattr(info, 'filename', ''),
+        'description': getattr(info, 'description', ''),
+        'chapters': getattr(info, 'chapters', []),
+        'subtitle_text': subtitle_text,
+        'subtitle_files': subtitle_files,
+    }
+    return web.Response(text=serializer.encode(result), content_type='application/json')
+
+
 if config.URL_PREFIX != '/':
     @routes.get('/')
     def index_redirect_root(request):

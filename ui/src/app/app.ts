@@ -6,7 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { NgSelectModule } from '@ng-select/ng-select';  
-import { faTrashAlt, faCheckCircle, faTimesCircle, faRedoAlt, faSun, faMoon, faCheck, faCircleHalfStroke, faDownload, faExternalLinkAlt, faFileImport, faFileExport, faCopy, faClock, faTachometerAlt, faQrcode, faShareAlt } from '@fortawesome/free-solid-svg-icons';
+import { faTrashAlt, faCheckCircle, faTimesCircle, faRedoAlt, faSun, faMoon, faCheck, faCircleHalfStroke, faDownload, faExternalLinkAlt, faFileImport, faFileExport, faCopy, faClock, faTachometerAlt, faQrcode, faShareAlt, faInfoCircle, faArrowLeft, faList, faFileAlt, faStickyNote } from '@fortawesome/free-solid-svg-icons';
 import { faGithub } from '@fortawesome/free-brands-svg-icons';
 import { CookieService } from 'ngx-cookie-service';
 import { DownloadsService } from './services/downloads.service';
@@ -102,6 +102,25 @@ export class App implements AfterViewInit, OnInit {
   faGithub = faGithub;
   faClock = faClock;
   faTachometerAlt = faTachometerAlt;
+  faInfoCircle = faInfoCircle;
+  faArrowLeft = faArrowLeft;
+  faList = faList;
+  faFileAlt = faFileAlt;
+  faStickyNote = faStickyNote;
+
+  // Detail page state
+  detailView = false;
+  detailLoading = false;
+  detailDownload: Download | null = null;
+  detailData: {
+    title: string;
+    url: string;
+    filename: string;
+    description: string;
+    chapters: Array<{ title: string; start_time: number; end_time: number }>;
+    subtitle_text: string;
+  } | null = null;
+
   subtitleFormats = [
     { id: 'srt', text: 'SRT' },
     { id: 'txt', text: 'TXT (Text only)' },
@@ -738,6 +757,38 @@ export class App implements AfterViewInit, OnInit {
 
   toggleAdvanced() {
     this.isAdvancedOpen = !this.isAdvancedOpen;
+  }
+
+  showDetail(download: Download) {
+    this.detailDownload = download;
+    this.detailLoading = true;
+    this.detailView = true;
+    this.detailData = null;
+    this.downloads.getDetail(download.url).subscribe({
+      next: (data: any) => {
+        this.detailData = data;
+        this.detailLoading = false;
+      },
+      error: () => {
+        this.detailLoading = false;
+      }
+    });
+  }
+
+  closeDetail() {
+    this.detailView = false;
+    this.detailDownload = null;
+    this.detailData = null;
+  }
+
+  formatChapterTime(seconds: number): string {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    if (h > 0) {
+      return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+    return `${m}:${String(s).padStart(2, '0')}`;
   }
 
   private updateMetrics() {
