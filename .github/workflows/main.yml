@@ -8,6 +8,9 @@ on:
 jobs:
   dockerhub-build-push:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       -
         name: Get current date
